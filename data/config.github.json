@@ -117,9 +117,85 @@
       {
         "name": "LWN.net",
         "url": "https://lwn.net/headlines/full_text?key=${LWN_KEY}",
-        "enabled": true,
+        "enabled": false,
         "category": "linux-kernel",
         "profile": "tech-news"
+      },
+      {
+        "name": "Ars Technica",
+        "url": "https://feeds.arstechnica.com/arstechnica/index",
+        "enabled": true,
+        "category": "technology",
+        "profile": "tech-news",
+        "content_extractor": "trafilatura"
+      },
+      {
+        "name": "The Verge",
+        "url": "https://www.theverge.com/rss/index.xml",
+        "enabled": true,
+        "category": "technology",
+        "profile": "tech-news"
+      },
+      {
+        "name": "TechCrunch",
+        "url": "https://techcrunch.com/feed/",
+        "enabled": true,
+        "category": "startups",
+        "profile": "tech-news"
+      },
+      {
+        "name": "The Register",
+        "url": "https://www.theregister.com/headlines.atom",
+        "enabled": true,
+        "category": "systems",
+        "profile": "tech-news"
+      },
+      {
+        "name": "GitHub Blog",
+        "url": "https://github.blog/feed/",
+        "enabled": true,
+        "category": "developer",
+        "profile": "tech-news",
+        "content_extractor": "trafilatura"
+      },
+      {
+        "name": "Hugging Face Blog",
+        "url": "https://huggingface.co/blog/feed.xml",
+        "enabled": true,
+        "category": "ai-ml",
+        "profile": "tech-news",
+        "content_extractor": "trafilatura"
+      },
+      {
+        "name": "DeepMind Blog",
+        "url": "https://deepmind.google/blog/rss.xml",
+        "enabled": true,
+        "category": "ai-research",
+        "profile": "tech-news",
+        "content_extractor": "trafilatura"
+      },
+      {
+        "name": "MIT Technology Review",
+        "url": "https://www.technologyreview.com/feed/",
+        "enabled": true,
+        "category": "technology",
+        "profile": "tech-news",
+        "content_extractor": "trafilatura"
+      },
+      {
+        "name": "Nature Machine Intelligence",
+        "url": "https://www.nature.com/natmachintell.rss",
+        "enabled": true,
+        "category": "ai-research",
+        "profile": "tech-news"
+      },
+      {
+        "name": "OpenAI News",
+        "url": "https://openai.com/news/rss.xml",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "tech-news",
+        "content_extractor": "trafilatura"
       }
     ],
     "reddit": {
@@ -160,6 +236,39 @@
           ]
         }
       ]
+    },
+    "ossinsight": {
+      "enabled": true,
+      "period": "past_24_hours",
+      "languages": [
+        "Python",
+        "TypeScript",
+        "Rust"
+      ],
+      "keywords": [],
+      "min_stars": 20,
+      "max_items": 20,
+      "category": "oss-trending",
+      "profile": "tech-news"
+    },
+    "gdelt": {
+      "enabled": true,
+      "query": "artificial intelligence OR machine learning OR large language model",
+      "mode": "ArtList",
+      "max_records": 15,
+      "timespan": "24h",
+      "language": "english",
+      "category": "global-ai",
+      "profile": "tech-news"
+    },
+    "google_news": {
+      "enabled": true,
+      "query": "AI artificial intelligence machine learning",
+      "language": "en",
+      "country": "US",
+      "max_results": 15,
+      "category": "ai-news",
+      "profile": "tech-news"
     }
   },
   "collection": {
