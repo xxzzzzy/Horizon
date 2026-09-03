@@ -19,7 +19,7 @@
     "default_profile": "tech-news",
     "profile_settings": {
       "tech-news": {
-        "threshold": 7.0,
+        "threshold": 6.0,
         "topic_dedup": true
       },
       "tech-blog": {
@@ -27,7 +27,7 @@
         "topic_dedup": false
       },
       "finance-news": {
-        "threshold": 7.0,
+        "threshold": 6.5,
         "topic_dedup": true
       }
     }
@@ -275,15 +275,46 @@
     "time_window_hours": 24
   },
   "digest": {
-    "max_items": null,
+    "max_items": 24,
     "profile_order": [
       "tech-news",
       "tech-blog",
       "finance-news"
     ],
-    "category_groups": {},
+    "category_groups": {
+      "ai": {
+        "limit": 8,
+        "categories": [
+          "ai-news",
+          "ai-ml",
+          "ai-research",
+          "ai-tools",
+          "llm-inference",
+          "global-ai"
+        ]
+      },
+      "tech": {
+        "limit": 8,
+        "categories": [
+          "technology",
+          "startups",
+          "systems",
+          "developer",
+          "github-trending",
+          "oss-trending",
+          "software-engineering"
+        ]
+      },
+      "finance": {
+        "limit": 5,
+        "categories": [
+          "finance",
+          "semiconductors"
+        ]
+      }
+    },
     "default_group": "other",
-    "default_group_limit": null
+    "default_group_limit": 3
   },
   "webhook": {
     "enabled": false,
