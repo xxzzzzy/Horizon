@@ -2,9 +2,12 @@ name: Daily Horizon Summary
 
 on:
   schedule:
-    # GitHub scheduled workflows use UTC. 20:00 UTC is 04:00 Asia/Shanghai;
-    # this intentionally runs early to offset the observed schedule delay.
-    - cron: '0 23 * * *'
+    # GitHub scheduled workflows use UTC. Asia/Shanghai is UTC+8, so the
+    # Beijing 07:1x run lands on the previous UTC date. We (1) offset off the
+    # top of the hour (:18) to dodge GitHub's busy :00 schedule slot and its
+    # queueing delays, and (2) label the digest by Asia/Shanghai date via
+    # HORIZON_SUMMARY_DATE so the morning post reads as "today" in Beijing.
+    - cron: '18 23 * * *'
   workflow_dispatch:      # Allow manual trigger
 
 jobs:
@@ -36,12 +39,15 @@ jobs:
       - name: Run Horizon
         env:
           # Map secrets to environment variables expected by config.json
-          # Modify these based on your data/config.github.json provider settings
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-        run: uv run horizon --hours 24
+        run: |
+          # Label the digest by Asia/Shanghai date (not UTC), so the 07:1x
+          # Beijing run produces a post dated "today" for the reader.
+          export HORIZON_SUMMARY_DATE="$(TZ=Asia/Shanghai date +%Y-%m-%d)"
+          uv run horizon --hours 24
 
-      - name: Set current date as environment variable
-        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      - name: Set current date (Asia/Shanghai) as environment variable
+        run: echo "DATE=$(TZ=Asia/Shanghai date +%Y-%m-%d)" >> $GITHUB_ENV
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -52,5 +58,3 @@ jobs:
           commit_message: "📝 Daily Summary: ${{ env.DATE }}"
           publish_branch: gh-pages
           enable_jekyll: true
-
-
