@@ -187,3 +187,17 @@ def tool_results_text(results: list[ToolResult]) -> str:
             f"## {result.request_id} for block {result.block_id}\n" + "\n".join(lines)
         )
     return "\n\n".join(sections)
+
+
+def translation_fallback_system_prompt(language: str) -> str:
+    target = target_language_instruction(language)
+    return (
+        "You are producing a concise daily-news digest entry. "
+        f"Write the headline and summary in {target}. "
+        "Translate and condense the supplied item faithfully; do not invent facts, numbers, or links. "
+        "Return valid JSON only:\n"
+        '{\n'
+        '  "title": "<localized headline>",\n'
+        '  "content": "<localized 2-4 sentence summary>"\n'
+        '}'
+    )

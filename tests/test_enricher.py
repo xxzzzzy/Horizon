@@ -526,3 +526,42 @@ def test_enrichment_batch_reports_failure_without_discarding_successes():
     assert result.succeeded_ids == [successful_item.id]
     assert result.failed_ids == [failed_item.id]
     assert result.failures[failed_item.id] == "RuntimeError: AI unavailable"
+
+def test_enrichment_falls_back_to_translation_on_full_failure():
+    responses = iter(
+        [
+            json.dumps({"tool_requests": []}),
+            json.dumps(
+                {
+                    "title": "GPT-6 Astra 发布",
+                    "content": "OpenAI 发布了 GPT-6 Astra，这是一个新的模型发布。",
+                }
+            ),
+        ]
+    )
+    requests = []
+
+    async def complete(**kwargs):
+        requests.append(kwargs)
+        return next(responses)
+
+    item = make_item()
+    enricher = ContentEnricher(
+        SimpleNamespace(complete=complete),
+        PROFILES,
+        ["zh"],
+        tools=FakeTools(),
+    )
+
+    async def fail_full_enrichment(item, profile, language, tool_results):
+        raise ValueError("Invalid enrichment artifact")
+
+    enricher._generate_artifact = fail_full_enrichment  # type: ignore[method-assign]
+
+    asyncio.run(enricher._enrich_item(item))
+
+    artifact = item.processing.artifacts["zh"]
+    assert artifact.title == "GPT-6 Astra 发布"
+    assert artifact.blocks[0].primary is True
+    assert artifact.blocks[0].id == "summary"
+    assert artifact.blocks[0].content == "OpenAI 发布了 GPT-6 Astra，这是一个新的模型发布。"

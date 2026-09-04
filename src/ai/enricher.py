@@ -27,6 +27,7 @@ from .prompting.enrichment import (
     item_context,
     tool_planning_prompt,
     tool_results_text,
+    translation_fallback_system_prompt,
 )
 from .utils import parse_json_response
 from ..models import ArtifactSource, ContentArtifact, ContentBlock, ContentItem
@@ -82,6 +83,21 @@ class GeneratedBlockWithHeader(GeneratedBlock):
         if not value.strip():
             raise ValueError("must not be empty")
         return value
+
+
+class FallbackTranslation(BaseModel):
+    """Minimal localized headline + digest used when full enrichment fails."""
+
+    title: str
+    content: str
+
+    @model_validator(mode="after")
+    def validate_non_empty(self) -> "FallbackTranslation":
+        if not self.title.strip():
+            raise ValueError("title must not be empty")
+        if not self.content.strip():
+            raise ValueError("content must not be empty")
+        return self
 
 
 @dataclass
@@ -223,29 +239,88 @@ class ContentEnricher:
         tool_results = await self._plan_and_execute_tools(item, profile)
         sources = self._sources_from_tool_results(tool_results)
 
-        artifacts = {}
+        artifacts: dict[str, ContentArtifact] = {}
         for language in self.languages:
-            generated = await self._generate_artifact(
-                item, profile, language, tool_results
-            )
-            self._expand_request_source_refs(generated.blocks, tool_results)
-            self._validate_blocks(generated.blocks, profile, tool_results)
-            generated.title = normalize_language(generated.title, language)
-            for block in generated.blocks:
-                block.title = normalize_language(block.title, language)
-                block.content = normalize_language(block.content, language)
-            referenced = {
-                source_id
-                for block in generated.blocks
-                for source_id in block.source_refs
-            }
-            artifacts[language] = ContentArtifact(
-                language=language,
-                title=generated.title,
-                blocks=generated.blocks,
-                sources=[source for source in sources.values() if source.id in referenced],
-            )
+            try:
+                artifacts[language] = await self._generate_localized_artifact(
+                    item, profile, language, tool_results, sources
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Full enrichment failed for %s (%s): %s; "
+                    "falling back to a plain localized digest.",
+                    item.id,
+                    language,
+                    exc,
+                )
+                try:
+                    artifacts[language] = await self._generate_translation_fallback(
+                        item, profile, language
+                    )
+                except Exception:
+                    # Preserve the original failure so the item is reported as skipped.
+                    raise exc from None
         item.processing.artifacts.update(artifacts)
+
+    async def _generate_localized_artifact(
+        self,
+        item: ContentItem,
+        profile: LoadedProfile,
+        language: str,
+        tool_results: list[ToolResult],
+        sources: dict[str, ArtifactSource],
+    ) -> ContentArtifact:
+        generated = await self._generate_artifact(
+            item, profile, language, tool_results
+        )
+        self._expand_request_source_refs(generated.blocks, tool_results)
+        self._validate_blocks(generated.blocks, profile, tool_results)
+        generated.title = normalize_language(generated.title, language)
+        for block in generated.blocks:
+            block.title = normalize_language(block.title, language)
+            block.content = normalize_language(block.content, language)
+        referenced = {
+            source_id
+            for block in generated.blocks
+            for source_id in block.source_refs
+        }
+        return ContentArtifact(
+            language=language,
+            title=generated.title,
+            blocks=generated.blocks,
+            sources=[
+                source for source in sources.values() if source.id in referenced
+            ],
+        )
+
+    async def _generate_translation_fallback(
+        self,
+        item: ContentItem,
+        profile: LoadedProfile,
+        language: str,
+    ) -> ContentArtifact:
+        generated = await self._complete_model(
+            FallbackTranslation,
+            system=translation_fallback_system_prompt(language),
+            user=item_context(item, profile, include_content=True),
+            error_message="Invalid translation fallback",
+        )
+        title = normalize_language(generated.title.strip(), language)
+        content = normalize_language(generated.content.strip(), language)
+        block = ContentBlock(
+            id="summary",
+            type="section",
+            title="",
+            content=content,
+            source_refs=[],
+            primary=True,
+        )
+        return ContentArtifact(
+            language=language,
+            title=title,
+            blocks=[block],
+            sources=[],
+        )
 
     @staticmethod
     def _expand_request_source_refs(
