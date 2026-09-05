@@ -3,11 +3,11 @@ name: Daily Horizon Summary
 on:
   schedule:
     # GitHub scheduled workflows use UTC. Asia/Shanghai is UTC+8, so the
-    # Beijing 07:1x run lands on the previous UTC date. We (1) offset off the
-    # top of the hour (:18) to dodge GitHub's busy :00 schedule slot and its
+    # Beijing 07:5x run lands on the previous UTC date. We (1) offset far off
+    # the top of the hour (:58) to dodge GitHub's busy :00 schedule slot and
     # queueing delays, and (2) label the digest by Asia/Shanghai date via
     # HORIZON_SUMMARY_DATE so the morning post reads as "today" in Beijing.
-    - cron: '18 23 * * *'
+    - cron: '58 23 * * *'
   workflow_dispatch:      # Allow manual trigger
 
 jobs:
