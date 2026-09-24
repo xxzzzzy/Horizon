@@ -36,6 +36,9 @@ from ..processing.tools import ToolRegistry, ToolResult
 
 logger = logging.getLogger(__name__)
 
+# Placeholder tokens from the prompt templates that models sometimes echo back.
+PLACEHOLDER_SOURCE_REFS = frozenset({"<tool result ID>", "<result ID>", ""})
+
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 class ToolRequest(BaseModel):
@@ -433,6 +436,11 @@ class ContentEnricher:
             allowed_ids = {block.id for block in base_blocks}
             configured_ids = {block.id for block in configured_blocks}
             for generated_block in generated.blocks:
+                generated_block.source_refs = [
+                    ref
+                    for ref in generated_block.source_refs
+                    if ref.strip() not in PLACEHOLDER_SOURCE_REFS
+                ]
                 if generated_block.id not in allowed_ids:
                     if generated_block.id in configured_ids:
                         continue
@@ -499,6 +507,23 @@ class ContentEnricher:
                 raise ValueError(
                     f"Artifact block {generated.block.id} does not match requested block {block.id}"
                 )
+            dropped = [
+                ref
+                for ref in generated.block.source_refs
+                if ref.strip() in PLACEHOLDER_SOURCE_REFS
+            ]
+            if dropped:
+                logger.warning(
+                    "Block %s of item %s dropped placeholder source refs: %s",
+                    block.id,
+                    item.id,
+                    ", ".join(sorted(set(dropped))),
+                )
+                generated.block.source_refs = [
+                    ref
+                    for ref in generated.block.source_refs
+                    if ref not in dropped
+                ]
             generated_by_id[block.id] = generated.block
 
         if not title:

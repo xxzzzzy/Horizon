@@ -565,3 +565,67 @@ def test_enrichment_falls_back_to_translation_on_full_failure():
     assert artifact.blocks[0].primary is True
     assert artifact.blocks[0].id == "summary"
     assert artifact.blocks[0].content == "OpenAI 发布了 GPT-6 Astra，这是一个新的模型发布。"
+
+
+def test_enrichment_drops_placeholder_source_refs_instead_of_skipping():
+    """A model echoing the prompt placeholder must not discard the whole item."""
+    responses = iter(
+        [
+            json.dumps(
+                {
+                    "tool_requests": [
+                        {
+                            "block_id": "background",
+                            "tool": "web_search",
+                            "arguments": {"query": "project architecture"},
+                            "purpose": "background",
+                        }
+                    ]
+                }
+            ),
+            json.dumps(
+                {
+                    "title": "新架构发布",
+                    "blocks": [
+                        {
+                            "id": "summary",
+                            "title": "摘要",
+                            "content": "项目发布了新的架构。",
+                            "source_refs": ["<tool result ID>"],
+                        }
+                    ],
+                }
+            ),
+            json.dumps(
+                {
+                    "title": "",
+                    "block": {
+                        "id": "background",
+                        "type": "section",
+                        "title": "背景",
+                        "content": "旧架构的背景信息。",
+                        "source_refs": ["<tool result ID>"],
+                    },
+                }
+            ),
+        ]
+    )
+
+    async def complete(**kwargs):
+        return next(responses)
+
+    item = make_item()
+    enricher = ContentEnricher(
+        SimpleNamespace(complete=complete),
+        PROFILES,
+        ["zh"],
+        tools=FakeTools(),
+    )
+
+    asyncio.run(enricher._enrich_item(item))
+
+    artifact = item.processing.artifacts["zh"]
+    assert artifact.title == "新架构发布"
+    by_id = {block.id: block for block in artifact.blocks}
+    assert by_id["background"].source_refs == []
+    assert by_id["summary"].source_refs == []
